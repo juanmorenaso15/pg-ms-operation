@@ -1,0 +1,53 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: pg-ms-operation
+    
+  datasource:
+    url: jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?currentSchema=operations_schema&ssl=true&sslmode=require
+    username: postgres.dsnqzletdqoyljapyoba
+    password: ${SUPABASE_PASSWORD}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  
+  cloud:
+    consul:
+      host: consul
+      port: 8500
+      discovery:
+        register: true
+        health-check-path: /actuator/health
+        prefer-ip-address: false
+        instance-id: ${spring.application.name}
+
+microservicio:
+  usuarios:
+    url: http://pg-ms-users:8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+security:
+  jwt:
+    secret-key: ${JWT_SECRET}
+    token-expiration: 3600000
+
+logging:
+  level:
+    com.pulse_gym: DEBUG
+
+biometric:
+  jwt:
+    secret-key: ${BIOMETRIC_JWT_SECRET}
+    token-expiration: 300000
