@@ -13,8 +13,15 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class EventoMaquinaAsyncService {
 
+    /**
+     * Cliente para interactuar con el microservicio de reportes
+     */
     private final EventoMaquinaClient eventoMaquinaClient;
 
+    /**
+     * Envía un evento de máquina al microservicio de reportes de manera asíncrona
+     * @param request DTO que contiene la información del evento de máquina
+     */
     @Async
     public void enviarEventoMaquina(EventoMaquinaRequestDTO request) {
         try {
