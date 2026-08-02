@@ -1,5 +1,6 @@
 package com.pulse_gym.ms_operation.services;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,6 +11,7 @@ import com.pulse_gym.lb_common.dto.ActualizarEstadoReporteDTO;
 import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
+import com.pulse_gym.lb_common.dto.EventoMaquinaRequestDTO;
 import com.pulse_gym.lb_common.dto.MessegeGlobalDTO;
 import com.pulse_gym.lb_common.dto.ReporteFallaDTO;
 import com.pulse_gym.lb_common.entity.operation.Equipo;
@@ -49,18 +51,26 @@ public class EquipoService {
     private final SedeRepository sedeRepository;
 
     /**
+     * Inyeccion de EventoMaquinaAsyncService para manejar el envio de eventos de
+     * maquina de manera asincrona
+     */
+    private final EventoMaquinaAsyncService eventoMaquinaAsyncService;
+
+    /**
      * Registra un nuevo equipo en el sistema. Primero verifica que el número de
      * serie del equipo no exista ya en la base de datos
      * 
-     * Se valida que solo pueda hacer la peticion un Admin, un Entrenador o un Recepcionista
+     * Se valida que solo pueda hacer la peticion un Admin, un Entrenador o un
+     * Recepcionista
      * 
      * @param equipoRequestDTO
-     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @param userRol          Rol del usuario que hace la petición (desde header
+     *                         X-User-Rol)
      * @return MessegeGlobalDTO con un mensaje de éxito si el equipo se registró
      *         correctamente
      */
     public MessegeGlobalDTO registrarEquipo(EquipoRequestDTO equipoRequestDTO, String userRol) {
-        
+
         ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
 
         if (equipoRepository.findByNumeroSerie(equipoRequestDTO.getNumeroSerie()).isPresent()) {
@@ -135,7 +145,7 @@ public class EquipoService {
             if (StringUtils.isNotBlank(request.getNombre())) {
                 predicates.add(cb.like(cb.lower(root.get("nombre")),
                         "%" + request.getNombre().toLowerCase() + "%")); // % comodin ->
-                                                                         
+
             }
 
             // Búsqueda por marca
@@ -175,11 +185,13 @@ public class EquipoService {
      * primero verifica que el equipo con el ID proporcionado exista, luego
      * actualiza
      * 
-     * Se valida que solo pueda hacer la peticion un Admin, un Entrenador o un Recepcionista
+     * Se valida que solo pueda hacer la peticion un Admin, un Entrenador o un
+     * Recepcionista
      * 
      * @param id
      * @param equipoRequestDTO
-     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @param userRol          Rol del usuario que hace la petición (desde header
+     *                         X-User-Rol)
      * @return MessegeGlobalDTO con un mensaje de éxito si el equipo se actualizó
      *         correctamente
      */
@@ -219,11 +231,13 @@ public class EquipoService {
     /**
      * Cambia el estado de un equipo existente en la base de datos.
      * 
-     * Se valida que la ruta solo pueda hacer la peticion un Admin, un Entrenador o un Recepcionista
+     * Se valida que la ruta solo pueda hacer la peticion un Admin, un Entrenador o
+     * un Recepcionista
      * 
      * @param id
      * @param estadoRequestDTO
-     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @param userRol          Rol del usuario que hace la petición (desde header
+     *                         X-User-Rol)
      * @return MessegeGlobalDTO con un mensaje de éxito si el estado del equipo se
      *         actualizó correctamente
      */
@@ -268,11 +282,13 @@ public class EquipoService {
     /**
      * Reporta una falla en un equipo existente en la base de datos.
      * 
-     * Se valida que la ruta solo pueda hacer la peticion un Admin, un Entrenador o un Recepcionista
+     * Se valida que la ruta solo pueda hacer la peticion un Admin, un Entrenador o
+     * un Recepcionista
      * 
      * @param idEquipo
      * @param request
-     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @param userRol  Rol del usuario que hace la petición (desde header
+     *                 X-User-Rol)
      * @return MessegeGlobalDTO con un mensaje de éxito si la falla se reportó
      *         correctamente
      */
@@ -303,18 +319,37 @@ public class EquipoService {
         }
 
         equipoRepository.save(equipo);
+        
+        enviarEventoMaquina(equipo);
+
 
         return new MessegeGlobalDTO("Falla reportada exitosamente para el equipo: " + equipo.getNombre());
     }
 
     /**
+     * Envía un evento de máquina al microservicio de reportes de manera asíncrona
+     * 
+     * @param equipo Equipo que tiene la falla reportada
+     */
+    private void enviarEventoMaquina(Equipo equipo) {
+        EventoMaquinaRequestDTO evento = new EventoMaquinaRequestDTO();
+        evento.setNombreMaquina(equipo.getNombre());
+        evento.setEstado(equipo.getEstado().name()); // OPERATIVO, MANTENIMIENTO, etc.
+        evento.setFechaReporte(LocalDate.now());
+        evento.setDescripcionProblema(equipo.getDescripcionFalla());
+        eventoMaquinaAsyncService.enviarEventoMaquina(evento);
+    }
+
+    /**
      * Actualiza el estado de un reporte de falla existente en la base de datos.
      * 
-     * Se valida que la ruta solo pueda hacer la peticion un Admin, un Entrenador o un Recepcionista
+     * Se valida que la ruta solo pueda hacer la peticion un Admin, un Entrenador o
+     * un Recepcionista
      * 
      * @param idEquipo
      * @param request
-     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @param userRol  Rol del usuario que hace la petición (desde header
+     *                 X-User-Rol)
      * @return MessegeGlobalDTO con un mensaje de éxito si el estado del reporte de
      *         falla se actualizó correctamente
      */
@@ -365,7 +400,8 @@ public class EquipoService {
      * @param idEquipo
      * @param estado
      * @param urgencia
-     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @param userRol  Rol del usuario que hace la petición (desde header
+     *                 X-User-Rol)
      * @return Lista de equipos que coinciden con los criterios de búsqueda
      */
     public List<Equipo> consultarReportesFalla(Long idEquipo, String estado, String urgencia, String userRol) {
