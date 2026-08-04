@@ -39,6 +39,9 @@ spring:
 microservicio:
   usuarios:
     url: http://pg-ms-users:8081
+  reports:
+    url: http://pg-ms-reports:8084
+
 
 management:
   endpoints:
