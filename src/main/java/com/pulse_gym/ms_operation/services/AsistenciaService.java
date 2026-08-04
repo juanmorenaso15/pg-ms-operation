@@ -4,6 +4,7 @@ import com.pulse_gym.lb_common.client.SocioMembresiaClient;
 import com.pulse_gym.lb_common.client.UsuarioClient;
 import com.pulse_gym.lb_common.dto.AsistenciaResponseDTO;
 import com.pulse_gym.lb_common.dto.EstadoMembresiaResponseDTO;
+import com.pulse_gym.lb_common.dto.EventoAccesoRequestDTO;
 import com.pulse_gym.lb_common.dto.MessegeGlobalDTO;
 import com.pulse_gym.lb_common.dto.RegistroAsistenciaBiometricaDTO;
 import com.pulse_gym.lb_common.dto.RegistroAsistenciaDTO;
@@ -83,6 +84,12 @@ public class AsistenciaService {
     private final ConcurrentHashMap<Long, Integer> intentosFallidos = new ConcurrentHashMap<>();
 
     /**
+     * Servicio asincrónico para enviar eventos de acceso al microservicio de
+     * reportes.
+     */
+    private final EventoAccesoAsyncService eventoAccesoAsyncService;
+
+    /**
      * Registra una nueva entrada de asistencia para un usuario mediante un acceso
      * tradicional.
      *
@@ -106,7 +113,7 @@ public class AsistenciaService {
             throw new RuntimeException("Tipo de acceso no válido. Debe ser WEB o APP");
         }
 
-        UsuarioPerfilResponseDTO usuario = usuarioClient.obtenerUsuarioPorId(request.getIdUsuario());
+        UsuarioPerfilResponseDTO usuario = usuarioClient.obtenerUsuarioPorIdInterno(request.getIdUsuario());
 
         if (usuario == null) {
             return registrarAccesoDenegado(request, sede, tipoAcceso,
@@ -122,6 +129,8 @@ public class AsistenciaService {
         asistencia.setMotivoDenegacion(null);
 
         asistenciaRepository.save(asistencia);
+
+        enviarEventoAcceso(request, sede, usuario);
 
         String nombreCompleto = (usuario.getNombre() != null ? usuario.getNombre() : "") +
                 " " + (usuario.getApellido() != null ? usuario.getApellido() : "");
@@ -422,6 +431,8 @@ public class AsistenciaService {
 
         asistenciaRepository.save(asistencia);
 
+        enviarEventoAcceso(request, sede, usuario);
+
         String nombreCompleto = (usuario.getNombre() != null ? usuario.getNombre() : "") +
                 " " + (usuario.getApellido() != null ? usuario.getApellido() : "");
         nombreCompleto = nombreCompleto.trim().isEmpty() ? "Socio" : nombreCompleto;
@@ -430,5 +441,23 @@ public class AsistenciaService {
                 "Acceso biometrico permitido. Bienvenido %s, registro exitoso en sede: %s",
                 nombreCompleto,
                 sede.getNombreSede()));
+    }
+
+    /**
+     * Envía un evento de acceso al microservicio de reportes de manera asíncrona.
+     * 
+     * @param request Datos de la solicitud de registro de asistencia.
+     * @param sede    Sede asociada al registro de asistencia.
+     * @param usuario Perfil del usuario que realizó el registro de asistencia.
+     */
+    private void enviarEventoAcceso(RegistroAsistenciaDTO request, Sede sede, UsuarioPerfilResponseDTO usuario) {
+        EventoAccesoRequestDTO eventoDTO = new EventoAccesoRequestDTO();
+        eventoDTO.setSocioId(request.getIdUsuario());
+        eventoDTO.setFechaHora(LocalDateTime.now());
+        eventoDTO.setTipoAcceso(request.getTipoAcceso());
+        eventoDTO.setTipoEvento("ENTRADA");
+
+        log.info("Enviando evento de acceso para socio ID: {}", request.getIdUsuario());
+        eventoAccesoAsyncService.enviarEventoAcceso(eventoDTO);
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication(scanBasePackages = {
     "com.pulse_gym.ms_operation",  
     "com.pulse_gym.lb_common",
@@ -19,7 +20,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
     "com.pulse_gym.lb_common.client",
     "com.pulse_gym.ms_operation.client"
 })
-
+@EnableAsync
 public class MsOperationApplication {
 
 	public static void main(String[] args) {
