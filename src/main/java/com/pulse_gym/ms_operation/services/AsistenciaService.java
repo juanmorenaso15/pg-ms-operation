@@ -113,7 +113,7 @@ public class AsistenciaService {
             throw new RuntimeException("Tipo de acceso no válido. Debe ser WEB o APP");
         }
 
-        UsuarioPerfilResponseDTO usuario = usuarioClient.obtenerUsuarioPorId(request.getIdUsuario());
+        UsuarioPerfilResponseDTO usuario = usuarioClient.obtenerUsuarioPorIdInterno(request.getIdUsuario());
 
         if (usuario == null) {
             return registrarAccesoDenegado(request, sede, tipoAcceso,
