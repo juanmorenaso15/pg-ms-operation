@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pulse_gym.lb_common.dto.ActualizarEstadoReporteDTO;
 import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
+import com.pulse_gym.lb_common.dto.ConsultaGeneralEquipoDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.MessegeGlobalDTO;
@@ -280,7 +281,7 @@ public class EquipoController {
     public ResponseEntity<Map<String, Object>> obtenerTodosLosEquipos(
             @RequestHeader(value = "X-User-Rol", required = false) String userRol) {
         try {
-            List<Equipo> equipos = equipoService.obtenerTodosLosEquipos(userRol);
+            List<ConsultaGeneralEquipoDTO> equipos = equipoService.obtenerTodosLosEquipos(userRol);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Lista de todos los equipos");
