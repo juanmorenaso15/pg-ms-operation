@@ -3,12 +3,14 @@ package com.pulse_gym.ms_operation.services;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.pulse_gym.lb_common.dto.ActualizarEstadoReporteDTO;
 import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
+import com.pulse_gym.lb_common.dto.ConsultaGeneralEquipoDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EventoMaquinaRequestDTO;
@@ -319,9 +321,8 @@ public class EquipoService {
         }
 
         equipoRepository.save(equipo);
-        
-        enviarEventoMaquina(equipo);
 
+        enviarEventoMaquina(equipo);
 
         return new MessegeGlobalDTO("Falla reportada exitosamente para el equipo: " + equipo.getNombre());
     }
@@ -444,5 +445,27 @@ public class EquipoService {
 
         return equipoRepository.findAll(spec);
     }
+
+    /**
+     * Obtiene todos los equipos de la base de datos.
+     * 
+     * Se valida que solo pueda hacer la peticion un Cualquier Rol
+     * 
+     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @return Lista de todos los equipos en la base de datos
+     */
+    public List<ConsultaGeneralEquipoDTO> obtenerTodosLosEquipos(String userRol) {
+    ValidacionDeRoles.validarCualquierRol(userRol);
+    List<Equipo> equipos = equipoRepository.findAll();
+    return equipos.stream()
+        .map(e -> {
+            ConsultaGeneralEquipoDTO dto = new ConsultaGeneralEquipoDTO();
+            dto.setId(e.getIdEquipo());
+            dto.setNombre(e.getNombre());
+            dto.setEstado(e.getEstado() != null ? e.getEstado().name() : null);
+            return dto;
+        })
+        .collect(Collectors.toList());
+}
 
 }
