@@ -319,9 +319,8 @@ public class EquipoService {
         }
 
         equipoRepository.save(equipo);
-        
-        enviarEventoMaquina(equipo);
 
+        enviarEventoMaquina(equipo);
 
         return new MessegeGlobalDTO("Falla reportada exitosamente para el equipo: " + equipo.getNombre());
     }
@@ -443,6 +442,23 @@ public class EquipoService {
         };
 
         return equipoRepository.findAll(spec);
+    }
+
+    /**
+     * Obtiene todos los equipos de la base de datos.
+     * 
+     * Se valida que solo pueda hacer la peticion un Cualquier Rol
+     * 
+     * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
+     * @return Lista de todos los equipos en la base de datos
+     */
+    public List<Equipo> obtenerTodosLosEquipos(String userRol) {
+        ValidacionDeRoles.validarCualquierRol(userRol);
+
+        if (userRol == null || userRol.trim().isEmpty()) {
+            throw new RuntimeException("Rol de usuario no proporcionado");
+        }
+        return equipoRepository.findAll();
     }
 
 }
