@@ -468,4 +468,22 @@ public class EquipoService {
         .collect(Collectors.toList());
 }
 
+/**
+ * Obtiene la cantidad de equipos filtrados por estado.
+ * 
+ * @param estado Cadena con el nombre del estado (ej. MANTENIMIENTO, OPERATIVO)
+ * @return Cantidad de equipos que coinciden con el estado
+ */
+public Integer obtenerConteoPorEstado(String estado) {
+    if (StringUtils.isBlank(estado)) {
+        return 0;
+    }
+    try {
+        EnumEstado estadoEnum = EnumEstado.valueOf(estado.toUpperCase().trim());
+        return (int) equipoRepository.countByEstado(estadoEnum);
+    } catch (IllegalArgumentException e) {
+        return 0;
+    }
+}
+
 }

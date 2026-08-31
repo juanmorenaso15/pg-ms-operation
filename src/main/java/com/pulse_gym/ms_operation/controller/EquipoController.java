@@ -296,4 +296,16 @@ public class EquipoController {
         }
     }
 
+    /**
+     * Endpoint consumido internamente para obtener la cantidad de equipos por
+     * estado.
+     * 
+     * @param estado Estado a consultar
+     * @return Cantidad entera de equipos encontrados
+     */
+    @GetMapping("/conteo")
+    public ResponseEntity<Integer> obtenerConteoPorEstado(@RequestParam("estado") String estado) {
+        Integer total = equipoService.obtenerConteoPorEstado(estado);
+        return ResponseEntity.ok(total);
+    }
 }
