@@ -65,7 +65,7 @@ public class SedeService {
      */ 
     public List<SedeResponseDTO> obtenerTodasLasSedes( String userRol) {
 
-        ValidacionDeRoles.validarAdmin(userRol);
+        ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
         List<Sede> sedes = sedeRepository.findAll(Sort.by(Sort.Direction.ASC, "nombreSede"));
         
         if (sedes.isEmpty()) {
@@ -165,7 +165,7 @@ public class SedeService {
      */ 
     public List<SedeResponseDTO> buscarSedesPorNombre(String nombre, String userRol) {
 
-        ValidacionDeRoles.validarAdmin(userRol);
+        ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
 
         List<Sede> sedes = sedeRepository.findByNombreSedeContainingIgnoreCase(nombre);
         
@@ -188,7 +188,7 @@ public class SedeService {
      */
     public List<SedeResponseDTO> buscarSedesPorCiudad(String ciudad, String userRol) {
 
-        ValidacionDeRoles.validarAdmin(userRol);
+        ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
 
         List<Sede> sedes = sedeRepository.findByCiudadContainingIgnoreCase(ciudad);
         
