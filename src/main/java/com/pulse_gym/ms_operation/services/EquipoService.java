@@ -336,7 +336,7 @@ public class EquipoService {
         EventoMaquinaRequestDTO evento = new EventoMaquinaRequestDTO();
         evento.setNombreMaquina(equipo.getNombre());
         evento.setEstado(equipo.getEstado().name()); // OPERATIVO, MANTENIMIENTO, etc.
-        evento.setFechaReporte(LocalDate.now());
+        evento.setFechaReporte(com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia().toLocalDate());
         evento.setDescripcionProblema(equipo.getDescripcionFalla());
         eventoMaquinaAsyncService.enviarEventoMaquina(evento);
     }
@@ -455,35 +455,35 @@ public class EquipoService {
      * @return Lista de todos los equipos en la base de datos
      */
     public List<ConsultaGeneralEquipoDTO> obtenerTodosLosEquipos(String userRol) {
-    ValidacionDeRoles.validarCualquierRol(userRol);
-    List<Equipo> equipos = equipoRepository.findAll();
-    return equipos.stream()
-        .map(e -> {
-            ConsultaGeneralEquipoDTO dto = new ConsultaGeneralEquipoDTO();
-            dto.setId(e.getIdEquipo());
-            dto.setNombre(e.getNombre());
-            dto.setEstado(e.getEstado() != null ? e.getEstado().name() : null);
-            return dto;
-        })
-        .collect(Collectors.toList());
-}
+        ValidacionDeRoles.validarCualquierRol(userRol);
+        List<Equipo> equipos = equipoRepository.findAll();
+        return equipos.stream()
+                .map(e -> {
+                    ConsultaGeneralEquipoDTO dto = new ConsultaGeneralEquipoDTO();
+                    dto.setId(e.getIdEquipo());
+                    dto.setNombre(e.getNombre());
+                    dto.setEstado(e.getEstado() != null ? e.getEstado().name() : null);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
 
-/**
- * Obtiene la cantidad de equipos filtrados por estado.
- * 
- * @param estado Cadena con el nombre del estado (ej. MANTENIMIENTO, OPERATIVO)
- * @return Cantidad de equipos que coinciden con el estado
- */
-public Integer obtenerConteoPorEstado(String estado) {
-    if (StringUtils.isBlank(estado)) {
-        return 0;
+    /**
+     * Obtiene la cantidad de equipos filtrados por estado.
+     * 
+     * @param estado Cadena con el nombre del estado (ej. MANTENIMIENTO, OPERATIVO)
+     * @return Cantidad de equipos que coinciden con el estado
+     */
+    public Integer obtenerConteoPorEstado(String estado) {
+        if (StringUtils.isBlank(estado)) {
+            return 0;
+        }
+        try {
+            EnumEstado estadoEnum = EnumEstado.valueOf(estado.toUpperCase().trim());
+            return (int) equipoRepository.countByEstado(estadoEnum);
+        } catch (IllegalArgumentException e) {
+            return 0;
+        }
     }
-    try {
-        EnumEstado estadoEnum = EnumEstado.valueOf(estado.toUpperCase().trim());
-        return (int) equipoRepository.countByEstado(estadoEnum);
-    } catch (IllegalArgumentException e) {
-        return 0;
-    }
-}
 
 }

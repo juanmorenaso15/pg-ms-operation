@@ -123,7 +123,7 @@ public class AsistenciaService {
         Asistencia asistencia = new Asistencia();
         asistencia.setIdUsuario(request.getIdUsuario());
         asistencia.setSede(sede);
-        asistencia.setFechaHoraEntrada(LocalDateTime.now());
+        asistencia.setFechaHoraEntrada(com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia());
         asistencia.setTipoAcceso(tipoAcceso);
         asistencia.setEstadoAcceso(EnumEstadoAcceso.PERMITIDO);
         asistencia.setMotivoDenegacion(null);
@@ -189,8 +189,12 @@ public class AsistenciaService {
      */
     public List<AsistenciaResponseDTO> consultarAsistenciasDelDia(String userRol) {
         ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
-        LocalDateTime inicio = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
-        LocalDateTime fin = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59);
+
+        LocalDateTime ahoraColombia = com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia();
+
+        LocalDateTime inicio = ahoraColombia.withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime fin = ahoraColombia.withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+
         List<Asistencia> asistencias = asistenciaRepository.findByFechaHoraEntradaBetween(inicio, fin);
         return asistencias.stream()
                 .map(this::convertirAResponseDTO)
@@ -212,7 +216,7 @@ public class AsistenciaService {
         Asistencia asistencia = new Asistencia();
         asistencia.setIdUsuario(request.getIdUsuario());
         asistencia.setSede(sede);
-        asistencia.setFechaHoraEntrada(LocalDateTime.now());
+        asistencia.setFechaHoraEntrada(com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia());
         asistencia.setTipoAcceso(tipoAcceso);
         asistencia.setEstadoAcceso(EnumEstadoAcceso.DENEGADO);
         asistencia.setMotivoDenegacion(motivo);
@@ -236,6 +240,27 @@ public class AsistenciaService {
         dto.setTipoAcceso(asistencia.getTipoAcceso().name());
         dto.setEstadoAcceso(asistencia.getEstadoAcceso().name());
         dto.setMotivoDenegacion(asistencia.getMotivoDenegacion());
+
+        try {
+            UsuarioPerfilResponseDTO usuario = usuarioClient.obtenerUsuarioPorIdInterno(asistencia.getIdUsuario());
+            if (usuario != null) {
+                String nombreCompleto = (usuario.getNombre() != null ? usuario.getNombre() : "") +
+                        " " + (usuario.getApellido() != null ? usuario.getApellido() : "");
+                nombreCompleto = nombreCompleto.trim();
+
+                dto.setNombre(nombreCompleto.isEmpty() ? "Usuario #" + asistencia.getIdUsuario() : nombreCompleto);
+                dto.setEmail(usuario.getEmail() != null ? usuario.getEmail() : "");
+            } else {
+                dto.setNombre("Usuario #" + asistencia.getIdUsuario());
+                dto.setEmail("");
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener la información del usuario ID {} para la asistencia: {}",
+                    asistencia.getIdUsuario(), e.getMessage());
+            dto.setNombre("Usuario #" + asistencia.getIdUsuario());
+            dto.setEmail("");
+        }
+
         return dto;
     }
 
@@ -368,7 +393,7 @@ public class AsistenciaService {
         AuditoriaBiometrica auditoria = new AuditoriaBiometrica();
         auditoria.setIdUsuario(idUsuario);
         auditoria.setHashHuella(hashHuella != null ? hashHuella : "N/A");
-        auditoria.setFechaHora(LocalDateTime.now());
+        auditoria.setFechaHora(com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia());
         auditoria.setExitoso(exitoso);
         auditoria.setMensaje(mensaje != null && mensaje.length() > 255 ? mensaje.substring(0, 255) : mensaje);
         auditoria.setIdSede(idSede);
@@ -423,7 +448,7 @@ public class AsistenciaService {
         Asistencia asistencia = new Asistencia();
         asistencia.setIdUsuario(request.getIdUsuario());
         asistencia.setSede(sede);
-        asistencia.setFechaHoraEntrada(LocalDateTime.now());
+        asistencia.setFechaHoraEntrada(com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia());
         asistencia.setTipoAcceso(tipoAcceso);
         asistencia.setEstadoAcceso(EnumEstadoAcceso.PERMITIDO);
         asistencia.setMotivoDenegacion(null);
@@ -453,7 +478,7 @@ public class AsistenciaService {
     private void enviarEventoAcceso(RegistroAsistenciaDTO request, Sede sede, UsuarioPerfilResponseDTO usuario) {
         EventoAccesoRequestDTO eventoDTO = new EventoAccesoRequestDTO();
         eventoDTO.setSocioId(request.getIdUsuario());
-        eventoDTO.setFechaHora(LocalDateTime.now());
+        eventoDTO.setFechaHora(com.pulse_gym.lb_common.util.FechaUtils.ahoraColombia());
         eventoDTO.setTipoAcceso(request.getTipoAcceso());
         eventoDTO.setTipoEvento("ENTRADA");
 
