@@ -144,9 +144,10 @@ public class EquipoController {
     @PatchMapping("/{id}/estado")
     public ResponseEntity<MessegeGlobalDTO> cambiarEstadoEquipo(@PathVariable Long id,
             @Valid @RequestBody EstadoEquipoRequestDTO estadoRequestDTO,
-            @RequestHeader(value = "X-User-Rol", required = false) String userRol) {
+            @RequestHeader(value = "X-User-Rol", required = false) String userRol,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         try {
-            MessegeGlobalDTO response = equipoService.cambiarEstadoEquipo(id, estadoRequestDTO, userRol);
+            MessegeGlobalDTO response = equipoService.cambiarEstadoEquipo(id, estadoRequestDTO, userRol, userId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -171,9 +172,10 @@ public class EquipoController {
     @PostMapping("/{idEquipo}/reportar-falla")
     public ResponseEntity<Map<String, Object>> reportarFalla(@PathVariable Long idEquipo,
             @Valid @RequestBody ReporteFallaDTO request,
-            @RequestHeader(value = "X-User-Rol", required = false) String userRol) {
+            @RequestHeader(value = "X-User-Rol", required = false) String userRol,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         try {
-            MessegeGlobalDTO response = equipoService.reportarFalla(idEquipo, request, userRol);
+            MessegeGlobalDTO response = equipoService.reportarFalla(idEquipo, request, userRol, userId);
 
             Map<String, Object> respuesta = new HashMap<>();
             respuesta.put("success", true);

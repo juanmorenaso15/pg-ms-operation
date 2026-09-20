@@ -8,9 +8,13 @@ import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.pulse_gym.lb_common.dto.ActualizarEstadoReporteDTO;
 import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.ConsultaGeneralEquipoDTO;
+import com.pulse_gym.lb_common.dto.EnvioEventoNotificacionDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EventoMaquinaRequestDTO;
@@ -21,6 +25,7 @@ import com.pulse_gym.lb_common.entity.operation.Proveedor;
 import com.pulse_gym.lb_common.entity.operation.Sede;
 import com.pulse_gym.lb_common.enums.EnumEstado;
 import com.pulse_gym.lb_common.enums.EnumEstadoReporte;
+import com.pulse_gym.lb_common.enums.EnumEventoAsociado;
 import com.pulse_gym.lb_common.enums.EnumUrgencia;
 import com.pulse_gym.lb_common.services.ValidacionDeRoles;
 import com.pulse_gym.ms_operation.repository.EquipoRepository;
@@ -57,6 +62,13 @@ public class EquipoService {
      * maquina de manera asincrona
      */
     private final EventoMaquinaAsyncService eventoMaquinaAsyncService;
+
+    /**
+     * Inyeccion de NotificacionAsyncService para notificar de manera asincrona
+     * al usuario que realizo la accion cuando un equipo se daña o entra en
+     * mantenimiento
+     */
+    private final NotificacionAsyncService notificacionAsyncService;
 
     /**
      * Registra un nuevo equipo en el sistema. Primero verifica que el número de
@@ -243,7 +255,8 @@ public class EquipoService {
      * @return MessegeGlobalDTO con un mensaje de éxito si el estado del equipo se
      *         actualizó correctamente
      */
-    public MessegeGlobalDTO cambiarEstadoEquipo(Long id, EstadoEquipoRequestDTO estadoRequestDTO, String userRol) {
+    public MessegeGlobalDTO cambiarEstadoEquipo(Long id, EstadoEquipoRequestDTO estadoRequestDTO, String userRol,
+            Long userId) {
 
         ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
 
@@ -267,6 +280,10 @@ public class EquipoService {
             // Actualizar el estado
             equipo.setEstado(estadoEnum);
             equipoRepository.save(equipo);
+
+            if (estadoEnum == EnumEstado.MANTENIMIENTO) {
+                enviarNotificacionEquipo(userId, EnumEventoAsociado.MAINTENANCE_ALERT, equipo);
+            }
 
             // Retornar respuesta exitosa
             return new MessegeGlobalDTO(String.format(
@@ -295,7 +312,7 @@ public class EquipoService {
      *         correctamente
      */
     @Transactional
-    public MessegeGlobalDTO reportarFalla(Long idEquipo, ReporteFallaDTO request, String userRol) {
+    public MessegeGlobalDTO reportarFalla(Long idEquipo, ReporteFallaDTO request, String userRol, Long userId) {
 
         ValidacionDeRoles.validarAdminOEntrenadorORecepcionista(userRol);
 
@@ -324,7 +341,45 @@ public class EquipoService {
 
         enviarEventoMaquina(equipo);
 
+        // La falla y el paso a mantenimiento son eventos distintos: se notifican
+        // por separado para que cada uno se pueda activar/desactivar segun las
+        // preferencias del usuario.
+        enviarNotificacionEquipo(userId, EnumEventoAsociado.EQUIPO_DANADO, equipo);
+        if (equipo.getEstado() == EnumEstado.MANTENIMIENTO) {
+            enviarNotificacionEquipo(userId, EnumEventoAsociado.MAINTENANCE_ALERT, equipo);
+        }
+
         return new MessegeGlobalDTO("Falla reportada exitosamente para el equipo: " + equipo.getNombre());
+    }
+
+    /**
+     * Notifica de manera asincrona al usuario que realizo la accion sobre un
+     * equipo (reporte de falla o cambio de estado a mantenimiento). Si no se
+     * recibio el id del usuario (peticion sin pasar por el gateway), no se
+     * envia nada.
+     *
+     * @param userId id del usuario a notificar, obtenido del header X-User-Id
+     * @param evento evento de notificacion a disparar
+     * @param equipo equipo involucrado, usado para completar las variables de
+     *               la plantilla
+     */
+    private void enviarNotificacionEquipo(Long userId, EnumEventoAsociado evento, Equipo equipo) {
+        if (userId == null) {
+            return;
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("nombre_equipo", equipo.getNombre());
+        variables.put("estado_equipo", equipo.getEstado() != null ? equipo.getEstado().name() : null);
+        variables.put("urgencia_falla", equipo.getUrgenciaFalla() != null ? equipo.getUrgenciaFalla().name() : null);
+        variables.put("descripcion_falla", equipo.getDescripcionFalla());
+
+        EnvioEventoNotificacionDTO eventoDTO = new EnvioEventoNotificacionDTO();
+        eventoDTO.setUsuarioId(userId);
+        eventoDTO.setEvento(evento);
+        eventoDTO.setVariablesAdicionales(variables);
+
+        notificacionAsyncService.enviarNotificacionEvento(eventoDTO);
     }
 
     /**
