@@ -14,7 +14,7 @@ import java.util.Map;
 import com.pulse_gym.lb_common.dto.ActualizarEstadoReporteDTO;
 import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.ConsultaGeneralEquipoDTO;
-import com.pulse_gym.lb_common.dto.EnvioEventoNotificacionDTO;
+import com.pulse_gym.lb_common.dto.EnvioEventoMasivoDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EventoMaquinaRequestDTO;
@@ -282,7 +282,7 @@ public class EquipoService {
             equipoRepository.save(equipo);
 
             if (estadoEnum == EnumEstado.MANTENIMIENTO) {
-                enviarNotificacionEquipo(userId, EnumEventoAsociado.MAINTENANCE_ALERT, equipo);
+                enviarNotificacionEquipo(EnumEventoAsociado.MAINTENANCE_ALERT, equipo);
             }
 
             // Retornar respuesta exitosa
@@ -344,42 +344,36 @@ public class EquipoService {
         // La falla y el paso a mantenimiento son eventos distintos: se notifican
         // por separado para que cada uno se pueda activar/desactivar segun las
         // preferencias del usuario.
-        enviarNotificacionEquipo(userId, EnumEventoAsociado.EQUIPO_DANADO, equipo);
+        enviarNotificacionEquipo(EnumEventoAsociado.EQUIPO_DANADO, equipo);
         if (equipo.getEstado() == EnumEstado.MANTENIMIENTO) {
-            enviarNotificacionEquipo(userId, EnumEventoAsociado.MAINTENANCE_ALERT, equipo);
+            enviarNotificacionEquipo(EnumEventoAsociado.MAINTENANCE_ALERT, equipo);
         }
 
         return new MessegeGlobalDTO("Falla reportada exitosamente para el equipo: " + equipo.getNombre());
     }
 
     /**
-     * Notifica de manera asincrona al usuario que realizo la accion sobre un
-     * equipo (reporte de falla o cambio de estado a mantenimiento). Si no se
-     * recibio el id del usuario (peticion sin pasar por el gateway), no se
-     * envia nada.
+     * Notifica de manera asincrona a TODOS los usuarios del sistema que tengan
+     * un numero de telefono registrado cuando un equipo se daña o entra en
+     * mantenimiento (le interesa a todo el mundo, no solo a quien reporto la
+     * falla o cambio el estado).
      *
-     * @param userId id del usuario a notificar, obtenido del header X-User-Id
      * @param evento evento de notificacion a disparar
      * @param equipo equipo involucrado, usado para completar las variables de
      *               la plantilla
      */
-    private void enviarNotificacionEquipo(Long userId, EnumEventoAsociado evento, Equipo equipo) {
-        if (userId == null) {
-            return;
-        }
-
+    private void enviarNotificacionEquipo(EnumEventoAsociado evento, Equipo equipo) {
         Map<String, Object> variables = new HashMap<>();
         variables.put("nombre_equipo", equipo.getNombre());
         variables.put("estado_equipo", equipo.getEstado() != null ? equipo.getEstado().name() : null);
         variables.put("urgencia_falla", equipo.getUrgenciaFalla() != null ? equipo.getUrgenciaFalla().name() : null);
         variables.put("descripcion_falla", equipo.getDescripcionFalla());
 
-        EnvioEventoNotificacionDTO eventoDTO = new EnvioEventoNotificacionDTO();
-        eventoDTO.setUsuarioId(userId);
+        EnvioEventoMasivoDTO eventoDTO = new EnvioEventoMasivoDTO();
         eventoDTO.setEvento(evento);
         eventoDTO.setVariablesAdicionales(variables);
 
-        notificacionAsyncService.enviarNotificacionEvento(eventoDTO);
+        notificacionAsyncService.enviarNotificacionEventoMasivo(eventoDTO);
     }
 
     /**
