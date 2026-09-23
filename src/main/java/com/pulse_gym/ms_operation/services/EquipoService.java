@@ -16,6 +16,7 @@ import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.ConsultaGeneralEquipoDTO;
 import com.pulse_gym.lb_common.dto.EnvioEventoMasivoDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
+import com.pulse_gym.lb_common.dto.EquipoResponseDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.EventoMaquinaRequestDTO;
 import com.pulse_gym.lb_common.dto.MessegeGlobalDTO;
@@ -535,4 +536,90 @@ public class EquipoService {
         }
     }
 
+    // ==========================================================================
+    // MÉTODOS NUEVOS - Consumo INTERNO vía Feign (ej. ms-users para IA)
+    // ==========================================================================
+
+    /**
+     * Obtiene TODOS los equipos del sistema en formato plano EquipoResponseDTO,
+     * sin ningún wrapper, pensado exclusivamente para consumo entre
+     * microservicios (Feign). No requiere validación de rol porque es tráfico
+     * interno entre servicios de confianza, no expuesto directamente al
+     * frontend.
+     *
+     * @return Lista de todos los equipos en formato EquipoResponseDTO
+     */
+    public List<EquipoResponseDTO> obtenerTodosEquiposParaIA() {
+        return equipoRepository.findAll().stream()
+                .map(this::convertirAEquipoResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Obtiene los equipos de una sede específica en formato plano
+     * EquipoResponseDTO, pensado exclusivamente para consumo entre
+     * microservicios (Feign). Si idSede es null, retorna todos los equipos.
+     *
+     * Este método soluciona el problema de que el Feign client de ms-users
+     * (EquipoClient.obtenerEquiposPorSede) llamaba a un endpoint que antes
+     * no existía en este controller, provocando que la IA de rutinas jamás
+     * recibiera el equipamiento real de la sede del socio.
+     *
+     * @param idSede ID de la sede a filtrar
+     * @return Lista de equipos de la sede indicada en formato EquipoResponseDTO
+     */
+    public List<EquipoResponseDTO> obtenerEquiposParaIAPorSede(Long idSede) {
+        return equipoRepository.findAll().stream()
+                .filter(e -> idSede == null
+                        || (e.getSede() != null && idSede.equals(e.getSede().getIdSede())))
+                .map(this::convertirAEquipoResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Obtiene los equipos filtrados por estado en formato plano
+     * EquipoResponseDTO, pensado exclusivamente para consumo entre
+     * microservicios (Feign).
+     *
+     * @param estado Estado del equipo (OPERATIVO, MANTENIMIENTO, etc.)
+     * @return Lista de equipos que coinciden con el estado indicado
+     */
+    public List<EquipoResponseDTO> obtenerEquiposParaIAPorEstado(String estado) {
+        if (StringUtils.isBlank(estado)) {
+            return obtenerTodosEquiposParaIA();
+        }
+
+        EnumEstado estadoEnum;
+        try {
+            estadoEnum = EnumEstado.valueOf(estado.toUpperCase().trim());
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+
+        return equipoRepository.findAll().stream()
+                .filter(eq -> eq.getEstado() == estadoEnum)
+                .map(this::convertirAEquipoResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convierte una entidad Equipo a EquipoResponseDTO, formato consumido por
+     * otros microservicios vía Feign (ej. la IA de generación de rutinas).
+     * Se mapea el campo "ubicacion" del equipo hacia "descripcion" del DTO,
+     * ya que es el campo que usa ms-users para mostrarle a la IA dónde está
+     * ubicado el equipo dentro de la sede.
+     *
+     * @param equipo Entidad a convertir
+     * @return DTO con los datos del equipo
+     */
+    private EquipoResponseDTO convertirAEquipoResponseDTO(Equipo equipo) {
+        EquipoResponseDTO dto = new EquipoResponseDTO();
+        dto.setIdEquipo(equipo.getIdEquipo());
+        dto.setNombreEquipo(equipo.getNombre());
+        dto.setDescripcion(equipo.getUbicacion());
+        dto.setEstado(equipo.getEstado() != null ? equipo.getEstado().name() : null);
+        dto.setIdSede(equipo.getSede() != null ? equipo.getSede().getIdSede() : null);
+        dto.setIdProveedor(equipo.getProveedor() != null ? equipo.getProveedor().getIdProveedor() : null);
+        return dto;
+    }
 }

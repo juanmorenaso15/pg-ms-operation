@@ -21,6 +21,7 @@ import com.pulse_gym.lb_common.dto.ActualizarEstadoReporteDTO;
 import com.pulse_gym.lb_common.dto.ConsultaEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.ConsultaGeneralEquipoDTO;
 import com.pulse_gym.lb_common.dto.EquipoRequestDTO;
+import com.pulse_gym.lb_common.dto.EquipoResponseDTO;
 import com.pulse_gym.lb_common.dto.EstadoEquipoRequestDTO;
 import com.pulse_gym.lb_common.dto.MessegeGlobalDTO;
 import com.pulse_gym.lb_common.dto.ReporteFallaDTO;
@@ -276,6 +277,11 @@ public class EquipoController {
      * 
      * Se valida que solo pueda hacer la peticion un Cualquier Rol
      * 
+     * Este endpoint está pensado para el FRONTEND (devuelve un wrapper con
+     * success/message/count/data). Para consumo interno entre microservicios
+     * (Feign, ej. ms-users para IA) usar /api/equipos/internos/todos, que
+     * devuelve la lista plana en formato EquipoResponseDTO.
+     * 
      * @param userRol Rol del usuario que hace la petición (desde header X-User-Rol)
      * @return ResponseEntity<Map<String, Object>> con la lista de todos los equipos
      */
@@ -296,6 +302,54 @@ public class EquipoController {
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+
+    /**
+     * Endpoint INTERNO consumido vía Feign por otros microservicios
+     * (ej. ms-users, para construir el contexto de la IA de rutinas).
+     * Devuelve directamente la lista PLANA de equipos en formato
+     * EquipoResponseDTO, sin ningún wrapper, para que el Feign client pueda
+     * deserializarla sin problemas como List<EquipoResponseDTO>.
+     * 
+     * @return Lista de todos los equipos del sistema
+     */
+    @GetMapping("/internos/todos")
+    public ResponseEntity<List<EquipoResponseDTO>> obtenerTodosLosEquiposInterno() {
+        List<EquipoResponseDTO> equipos = equipoService.obtenerTodosEquiposParaIA();
+        return ResponseEntity.ok(equipos);
+    }
+
+    /**
+     * Endpoint INTERNO consumido vía Feign (ej. ms-users) para obtener los
+     * equipos de una sede específica en formato plano EquipoResponseDTO.
+     * 
+     * ANTES este endpoint NO EXISTÍA, por lo cual el Feign client de ms-users
+     * (EquipoClient.obtenerEquiposPorSede) siempre fallaba con 404 y la IA
+     * nunca recibía el equipamiento real de la sede del socio, generando
+     * siempre rutinas de peso corporal.
+     * 
+     * @param idSede ID de la sede a consultar
+     * @return Lista de equipos que pertenecen a la sede indicada
+     */
+    @GetMapping("/por-sede")
+    public ResponseEntity<List<EquipoResponseDTO>> obtenerEquiposPorSede(
+            @RequestParam("idSede") Long idSede) {
+        List<EquipoResponseDTO> equipos = equipoService.obtenerEquiposParaIAPorSede(idSede);
+        return ResponseEntity.ok(equipos);
+    }
+
+    /**
+     * Endpoint INTERNO consumido vía Feign (ej. ms-users) para obtener los
+     * equipos filtrados por estado en formato plano EquipoResponseDTO.
+     * 
+     * @param estado Estado del equipo (OPERATIVO, MANTENIMIENTO, etc.)
+     * @return Lista de equipos que coinciden con el estado indicado
+     */
+    @GetMapping("/por-estado")
+    public ResponseEntity<List<EquipoResponseDTO>> obtenerEquiposPorEstadoInterno(
+            @RequestParam("estado") String estado) {
+        List<EquipoResponseDTO> equipos = equipoService.obtenerEquiposParaIAPorEstado(estado);
+        return ResponseEntity.ok(equipos);
     }
 
     /**
