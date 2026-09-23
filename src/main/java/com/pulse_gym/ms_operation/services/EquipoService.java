@@ -613,13 +613,39 @@ public class EquipoService {
      * @return DTO con los datos del equipo
      */
     private EquipoResponseDTO convertirAEquipoResponseDTO(Equipo equipo) {
+        return convertirAEquipoResponseDTOPublico(equipo);
+    }
+
+    public EquipoResponseDTO convertirAEquipoResponseDTOPublico(Equipo equipo) {
         EquipoResponseDTO dto = new EquipoResponseDTO();
         dto.setIdEquipo(equipo.getIdEquipo());
+
+        // Asignar nombres
+        dto.setNombre(equipo.getNombre());
         dto.setNombreEquipo(equipo.getNombre());
+
+        // Nuevos atributos solicitados
+        dto.setMarca(equipo.getMarca());
+        dto.setModelo(equipo.getModelo());
+        dto.setNumeroSerie(equipo.getNumeroSerie());
+        dto.setFechaAdquisicion(equipo.getFechaAdquisicion());
+        dto.setFechaGarantia(equipo.getFechaGarantia());
+        dto.setUbicacion(equipo.getUbicacion());
         dto.setDescripcion(equipo.getUbicacion());
+
+        // Estados y fallas
         dto.setEstado(equipo.getEstado() != null ? equipo.getEstado().name() : null);
+        dto.setUrgenciaFalla(equipo.getUrgenciaFalla() != null ? equipo.getUrgenciaFalla().name() : null);
+        dto.setDescripcionFalla(equipo.getDescripcionFalla());
+        dto.setEstadoReporte(equipo.getEstadoReporte() != null ? equipo.getEstadoReporte().name() : null);
+
+        // IDs y nombres relacionales
         dto.setIdSede(equipo.getSede() != null ? equipo.getSede().getIdSede() : null);
+        dto.setNombreSede(equipo.getSede() != null ? equipo.getSede().getNombreSede() : null);
+
         dto.setIdProveedor(equipo.getProveedor() != null ? equipo.getProveedor().getIdProveedor() : null);
+        dto.setNombreProveedor(equipo.getProveedor() != null ? equipo.getProveedor().getNombreEmpresa() : null);
+
         return dto;
     }
 }

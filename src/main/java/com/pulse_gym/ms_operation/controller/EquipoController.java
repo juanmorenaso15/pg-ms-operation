@@ -3,6 +3,7 @@ package com.pulse_gym.ms_operation.controller;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -80,20 +81,25 @@ public class EquipoController {
     public ResponseEntity<Map<String, Object>> consultarEquipos(@RequestBody ConsultaEquipoRequestDTO request,
             @RequestHeader(value = "X-User-Rol", required = false) String userRol) {
         try {
+            // Obtenemos las entidades con la lógica actual
             List<Equipo> equipos = equipoService.obtenerEquipos(request, userRol);
+
+            // Mapeamos cada entidad Equipo a EquipoResponseDTO para incluir los nombres
+            List<EquipoResponseDTO> equiposDTO = equipos.stream()
+                    .map(equipoService::convertirAEquipoResponseDTOPublico) // O haz público el conversor
+                    .collect(Collectors.toList());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
 
-            // Mensaje diferenciado según si hay resultados o no
-            if (equipos.isEmpty()) {
+            if (equiposDTO.isEmpty()) {
                 response.put("message", "Consulta exitosa, no se encontraron equipos");
                 response.put("count", 0);
-                response.put("data", equipos);
+                response.put("data", equiposDTO);
             } else {
                 response.put("message", "Consulta exitosa");
-                response.put("count", equipos.size());
-                response.put("data", equipos);
+                response.put("count", equiposDTO.size());
+                response.put("data", equiposDTO);
             }
 
             return ResponseEntity.ok(response);
